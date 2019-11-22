@@ -1,62 +1,47 @@
-#Author mxaba
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
-from torch import nn
-from torch import tensor
-from torch import optim
-import torch.nn.functional as F
-from torch.autograd import Variable
-from torchvision import datasets, transforms
-import torchvision.models as models
-from collections import OrderedDict
-import json
-import PIL
-from PIL import Image
+import os
 import argparse
+from model import Model
+import PIL
+import process_data
 
-import futils
+def is_file(file_name):
+    """Checks if a file exist"""
+    if not os.path.isfile(os.getcwd() + "/" + file_name):
+        msg = "{0} does not exist".format(file_name)
+        raise argparse.ArgumentTypeError(msg)
+    else:
+        return file_name
 
-#Command Line Arguments
+# creation of the parser
+parser = argparse.ArgumentParser(description='Description : Predict the name of a flower using a pre-trained model with a picture of the flower as input')
 
-argumentparser = argparse.ArgumentParser(
-    description='predict-file')
-argumentparser.add_argument('input_img', default='mxaba/flowers/test/1/image_06752.jpg', nargs='*', action="store", type = str)
-argumentparser.add_argument('checkpoint', default='/home/workspace/mxaba/checkpoint.pth', nargs='*', action="store",type = str)
-argumentparser.add_argument('--top_k', default=5, dest="top_k", action="store", type=int)
-argumentparser.add_argument('--category_names', dest="category_names", action="store", default='mxaba/mapping/cat_to_name.json')
-argumentparser.add_argument('--gpu', default="gpu", action="store", dest="gpu")
+required_args = parser.add_argument_group('required arguments')
+required_args.add_argument('--image_path', metavar='\b', required=True, type=is_file, default="flowers/test/1/image_06743.jpg" ,help='path to the image file')
+required_args.add_argument('--checkpoint_path', metavar='\b', required=True, type=is_file, default="checkpoint.pth", help='checkpoint of the trained model')
 
-parser = argumentparser.parse_args()
-path_images = parser.input_img
-number_of_outputs = parser.top_k
-power = parser.gpu
-input_img = parser.input_img
-path = parser.checkpoint
-category_names = parser.category_names
+optional_args = parser.add_argument_group('optional arguments')
+parser.add_argument('--json_file', metavar='\b', action="store", default=None, type=is_file, help='mapping .json file of categories to real names')
+parser.add_argument('--top_k', metavar='\b', action="store", default=1, type=int, help='top k most likely classes')
+parser.add_argument('--gpu', action="store_true", help='gpu')
 
+args = parser.parse_args()  # the parameters are now stocked in the namespace args
 
+print("Initialization of model")
+model = Model(train_loader=None, valid_loader=None, test_loader=None, model_pretrained=None, hidden_units=None, epochs=None, learning_rate=None, save_dir=None, gpu=args.gpu)
 
-training_loader, testing_loader, validation_loader = futils.load_data()
+print("Loading parameters of model..")
+model.load(os.getcwd() + "/" + args.checkpoint_path)
+print("Model_loaded")
 
-
-futils.load_checkpoint(path)
-
-
-with open('category_names', 'r') as json_file:
-    cat_to_name = json.load(json_file)
-
-
-probability = futils.predict(path_images, model, number_of_outputs, power)
-
-
-labels = [cat_to_name[str(index + 1)] for index in np.array(probability[1][0])]
-probabilities = np.array(probability[0][0])
-
-
-i=0
-while i < number_of_outputs:
-    print("{} with a probability of {}".format(labels[i], probabilities[i]))
-    i += 1
-
-print("Here you are")
+print("Prediction by the trained model..")
+if args.json_file is not None:
+    model.load_cat_to_name(os.getcwd() + "/" + args.json_file)
+    
+    top_p, top_class = model.predict(image_path=os.getcwd()+"/"+args.image_path, topk=args.top_k) 
+    for n in range(len(top_class)):
+        print("flower_name: {:30} probability: {:.3f} %".format(top_class[n], top_p[n]*100))
+else: 
+    print("Prediction by the trained model..")
+    top_p, top_class = model.predict(image_path=os.getcwd()+"/"+args.image_path, topk=args.top_k) 
+    for n in range(len(top_class)):
+        print("flower_cat: {:3} probability: {:.3f} %".format(top_class[n], top_p[n]*100))
