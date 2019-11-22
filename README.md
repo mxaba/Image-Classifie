@@ -101,9 +101,3 @@ Pre-Trained Network
 
 The checkpoint.pth file contains the information of a network trained to recognise 102 different species of flowers. I has been trained with specific hyperparameters thus if you don't set them right the network will fail. In order to have a prediction for an image located in the path /path/to/image using my pretrained model you can simply type python predict.py /path/to/image checkpoint.pth
 Contributing
-
-Please read CONTRIBUTING.md for the process for submitting pull requests.
-Authors
-
-   Shanmukha Mudigonda - Initial work
-    Udacity - Final Project of the AI with Python Nanodegree
